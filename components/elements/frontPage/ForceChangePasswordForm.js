@@ -7,7 +7,7 @@ import AppButtonSpinner from "@/components/klaudsolcms/AppButtonSpinner";
 import { authReducer, initialState } from "@/components/reducers/authReducer";
 import { INIT, ERROR, CLEANUP, SUCCESS } from "@/lib/actions";
 
-const ForceChangePasswordForm = ({ pwd }) => {
+const ForceChangePasswordForm = ({ email, pwd }) => {
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -24,7 +24,7 @@ const ForceChangePasswordForm = ({ pwd }) => {
             headers: {
               "Content-type": "application/json",
             },
-            body: JSON.stringify({ currentPassword:pwd, newPassword, confirmNewPassword }),
+            body: JSON.stringify({ email, currentPassword:pwd, newPassword, confirmNewPassword }),
           });
           dispatch({ type: SUCCESS });
           router.push('/admin');

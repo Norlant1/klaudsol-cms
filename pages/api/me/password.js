@@ -22,22 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **/
 
-import { withSession } from '@klaudsol/commons/lib/Session';
-import { defaultErrorHandler } from '@klaudsol/commons/lib/ErrorHandler';
-import { assert } from '@klaudsol/commons/lib/Permissions';
-import { OK, UNPROCESSABLE_ENTITY } from '@klaudsol/commons/lib/HttpStatuses';
-import Session from '@klaudsol/commons/models/Session';
-import People from '@klaudsol/commons/models/People';
-import RecordNotFound from '@klaudsol/commons/errors/RecordNotFound';
+import { withSession } from "@klaudsol/commons/lib/Session";
+import { defaultErrorHandler } from "@klaudsol/commons/lib/ErrorHandler";
+import { assert } from "@klaudsol/commons/lib/Permissions";
+import { OK, UNPROCESSABLE_ENTITY } from "@klaudsol/commons/lib/HttpStatuses";
+import Session from "@klaudsol/commons/models/Session";
+import People from "@klaudsol/commons/models/People";
+import UnauthorizedError from "@klaudsol/commons/errors/UnauthorizedError";
+import RecordNotFound from "@klaudsol/commons/errors/RecordNotFound";
 
 export default withSession(handler);
 
 async function handler(req, res) {
-  
   try {
-    switch(req.method) {
+    switch (req.method) {
       case "PUT":
-        return update(req, res); 
+        return update(req, res);
       default:
         throw new Error(`Unsupported method: ${req.method}`);
     }
@@ -46,43 +46,48 @@ async function handler(req, res) {
   }
 }
 
-async function update(req, res) { 
-  try{
-
-    await assert({
-     loggedIn: true,
-    }, req);
-
+async function update(req, res) {
+  try {
+ 
     const { session_token } = req.session;
-    const { currentPassword, newPassword, confirmNewPassword } = req.body; 
+    const { email, currentPassword, newPassword, confirmNewPassword } = req.body;
 
     //these should be captured by the front-end validator, but the backend should detect
     //it as well.
-    if (!newPassword) {
-      res.status(UNPROCESSABLE_ENTITY).json({message: 'A password is required.'}); 
-      return;
+    if (!newPassword || !confirmNewPassword) {
+     return res.status(UNPROCESSABLE_ENTITY).json({ message: "Password is required." });
     }
 
     if (newPassword !== confirmNewPassword) {
-      res.status(UNPROCESSABLE_ENTITY).json({message: 'The password does not match the confirmation password.'});
-      return;
-    } 
+      return res.status(UNPROCESSABLE_ENTITY).json({ message:  "The password does not match the confirmation password." });
+    }
 
-    const session = await Session.getSession(session_token);
-    const forcePasswordChange = await People.updatePassword({id: session.people_id, oldPassword: currentPassword, newPassword});
-  
+    await assert(
+      {
+        loggedIn: true,
+      },
+      req
+    );
+
+    const forcePasswordChange = await People.updatePassword({
+      email,
+      session: session_token,
+      oldPassword: currentPassword,
+      newPassword,
+    });
+    
+    console.log(forcePasswordChange)
+
     req.session.cache = {
       ...req.session.cache,
       forcePasswordChange,
     };
     await req.session.save();
-    
-    res.status(OK).json({message: 'Successfully changed your password.'}); 
-  }
-  catch (error) {
-    if (error instanceof RecordNotFound) {
-      res.status(422).json({message: "Incorrect password."});
-      return;
+
+    res.status(OK).json({ message: "Successfully changed your password." });
+  } catch (error) {
+    if (error instanceof UnauthorizedError || error instanceof RecordNotFound) {
+      res.status(UNPROCESSABLE_ENTITY).json({ message: error.message });
     } else {
       await defaultErrorHandler(error, req, res);
     }
