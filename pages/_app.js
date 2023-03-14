@@ -12,11 +12,11 @@ import "@/styles/general.scss";
 
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import * as gtag from "@/lib/gtag";
 import { Poppins } from '@next/font/google';
+import * as gtag from "@/lib/gtag";
 
 const poppins = Poppins({
-  weight: '400',
+  weight: ['400', '500', '600', '700'],
   subsets: ['latin'],
 })
 
