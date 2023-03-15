@@ -33,14 +33,23 @@ async function login(req, res) {
     }
 
     const {
-      session_token,
+      session_token, access_token,
       user: { firstName, lastName, roles, capabilities, forcePasswordChange },
-    } = await People.login(email, password);
-    req.session.session_token = session_token;
+    } = await People.login(email, password, res);
+
+    req.session.tokens = {
+      session_token,
+      access_token
+    }
+     // for now lets just store the token in the req.session for automated renewal of accessToken
+     // by using assert to test aws cognito.
+     // note!!!! this is just temporary as assert job is only to verify if a user is logged in.
+     // we will handle the renewal of token somewhere later. 
+        
     req.session.cache = {
       firstName,
       lastName,
-      defaultEntityType: "Articles",
+      defaultEntityType: "articles",
       homepage: "/admin",
       forcePasswordChange,
     };
@@ -49,11 +58,13 @@ async function login(req, res) {
       req.session.cache.roles = roles;
       req.session.cache.capabilities = capabilities;
     }
+    
 
     // We will refrain from assigning roles and capabilities if the forcePasswordChange flag is set to true.
     // This is to prevent logged-in users from accessing protected api routes before changing their password.
 
     await req.session.save();
+    console.log(req.session);
     res.status(OK).json({ forcePasswordChange });
   } catch (error) {
     if (error instanceof UnauthorizedError || error instanceof RecordNotFound) {
@@ -66,8 +77,8 @@ async function login(req, res) {
 
 async function logout(req, res) {
   try {
-    const session_token = assertUserIsLoggedIn(req);
-    await Session.logout(session_token);
+    const token = assertUserIsLoggedIn(req);
+    await Session.logout(token);
     req.session.destroy();
     res.status(200).json({ message: "OK" });
   } catch (error) {

@@ -75,8 +75,6 @@ async function update(req, res) {
       oldPassword: currentPassword,
       newPassword,
     });
-    
-    console.log(forcePasswordChange)
 
     req.session.cache = {
       ...req.session.cache,
